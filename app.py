@@ -6,12 +6,13 @@ import re
 from datetime import datetime
 
 # Cấu hình giao diện
-st.set_page_config(page_title="Global Sales Intelligence Tool", layout="wide")
+st.set_page_config(page_title="Global B2B Sales Intelligence Tool", layout="wide")
 
 st.sidebar.title("⚙️ Cài đặt")
 serpapi_key = st.sidebar.text_input("SerpApi API key", type="password", help="Nhập API Key lấy từ serpapi.com")
 
-st.title("🌐 Global Sales Intelligence Tool - Tìm Nhà Phân Phối Toàn Cầu")
+st.title("🌐 Global B2B Sales Intelligence Tool")
+st.caption("Tìm kiếm Importers, Distributors, Wholesalers, Retailers & Buyers trên toàn thế giới")
 
 # Cấu hình từ khóa
 col_input1, col_input2 = st.columns(2)
@@ -22,29 +23,36 @@ with col_input2:
 
 num_per_query = st.slider("Số lượng kết quả lấy cho mỗi câu lệnh", 5, 20, 10)
 
-# Làm sạch từ khóa sản phẩm để tránh bị lặp từ
+# 1. Tự động làm sạch từ khóa sản phẩm nếu người dùng lỡ nhập kèm tên vai trò
 product = raw_product.strip()
-for word in ["importers", "importer", "distributors", "distributor", "buyers", "buyer", "list of", "suppliers", "supplier"]:
-    if word in product.lower():
-        product = re.sub(rf'\b{word}\b', '', product, flags=re.IGNORECASE).strip()
+role_words = [
+    "importers", "importer", "distributors", "distributor", "wholesalers", "wholesaler", 
+    "retailers", "retailer", "buyers", "buyer", "purchasers", "purchaser", "list of", "suppliers", "supplier"
+]
+for word in role_words:
+    product = re.sub(rf'\b{word}\b', '', product, flags=re.IGNORECASE).strip()
 
-# Định hình phạm vi địa lý
+# 2. Định hình phạm vi địa lý
 location_str = f'"{country}"' if country.lower() not in ["worldwide", "global", ""] else ""
 
-# Các câu lệnh Google Dork quét Nhà phân phối B2B & Decision Maker TOÀN CẦU
+# 3. Chuỗi vai trò B2B đầy đủ
+b2b_roles = '(importer OR distributor OR wholesaler OR retailer OR buyer OR purchaser)'
+linkedin_titles = '("purchasing manager" OR "procurement manager" OR "import manager" OR "buyer" OR "head of import" OR "category manager" OR "CEO")'
+
+# 4. Các câu lệnh Google Dork quét B2B TOÀN CẦU
 queries_to_run = [
-    f'"{product}" (distributor OR importer OR "wholesale buyer") {location_str}'.strip(),
-    f'site:kompass.com "{product}" (distributor OR importer) {location_str}'.strip(),
-    f'site:europages.com "{product}" (distributor OR importer) {location_str}'.strip(),
-    f'site:thomasnet.com OR site:tradekey.com "{product}" {location_str}'.strip(),
-    f'site:linkedin.com/in/ "{product}" ("purchasing manager" OR "import manager" OR "buyer" OR "CEO") {location_str}'.strip()
+    f'"{product}" {b2b_roles} {location_str}'.strip(),
+    f'site:kompass.com "{product}" {b2b_roles} {location_str}'.strip(),
+    f'site:europages.com "{product}" {b2b_roles} {location_str}'.strip(),
+    f'site:thomasnet.com OR site:tradekey.com "{product}" {b2b_roles} {location_str}'.strip(),
+    f'site:linkedin.com/in/ "{product}" {linkedin_titles} {location_str}'.strip()
 ]
 
 with st.expander("📋 Xem trước 5 câu lệnh Google Dork Toàn Cầu sẽ tự động chạy:"):
     for q in queries_to_run:
         st.code(q)
 
-btn_start_search = st.button("🚀 BẮT ĐẦU TÌM NHÀ PHÂN PHỐI TOÀN CẦU", type="primary")
+btn_start_search = st.button("🚀 BẮT ĐẦU TÌM KHÁCH HÀNG TOÀN CẦU", type="primary")
 
 # Danh sách tên miền rác/không phải đối tượng mua hàng cần loại bỏ
 BLOCKED_DOMAINS = [
@@ -72,7 +80,7 @@ if btn_start_search:
         status_text = st.empty()
         
         for index, query in enumerate(queries_to_run):
-            status_text.text(f"🔍 [Lệnh {index+1}/{len(queries_to_run)}] Đang quét thị trường toàn cầu: {query}")
+            status_text.text(f"🔍 [Lệnh {index+1}/{len(queries_to_run)}] Đang quét đối tác B2B: {query}")
             
             try:
                 params = {
@@ -115,14 +123,14 @@ if btn_start_search:
             df = pd.DataFrame(all_results)
             df_clean = df.drop_duplicates(subset=["Website Domain"])
             
-            st.success(f"🎉 Tổng cộng tìm thấy **{len(df_clean)}** Nhà phân phối/Khách hàng tiềm năng toàn cầu!")
+            st.success(f"🎉 Tổng cộng tìm thấy **{len(df_clean)}** Khách hàng / Đối tác B2B tiềm năng toàn cầu!")
             st.dataframe(df_clean, use_container_width=True)
             
             csv_data = df_clean.to_csv(index=False, encoding='utf-8-sig')
-            clean_filename = f"Global_Distributors_{product}_{country.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
+            clean_filename = f"Global_B2B_Buyers_{product}_{country.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
             
             st.download_button(
-                label="📥 Tải danh sách Nhà phân phối về Excel (.CSV)",
+                label="📥 Tải danh sách Khách hàng B2B về Excel (.CSV)",
                 data=csv_data,
                 file_name=clean_filename,
                 mime="text/csv"
