@@ -1,3 +1,6 @@
-streamlit
-google-search-results
-pandas
+streamlit>=1.35
+pandas>=2.0
+requests>=2.31
+beautifulsoup4>=4.12
+openpyxl>=3.1
+google-search-results>=2.4
