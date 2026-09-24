@@ -27,11 +27,17 @@ with col_top2:
 st.subheader("Cấu hình từ khóa & Thị trường xuất khẩu")
 col_input1, col_input2 = st.columns(2)
 with col_input1:
-    product = st.text_input("Sản phẩm xuất khẩu:", "food")
+    raw_product = st.text_input("Sản phẩm xuất khẩu (ví dụ: food, coffee, furniture):", "food")
 with col_input2:
-    country = st.text_input("Thị trường / Quốc gia mục tiêu:", "Sweden")
+    country = st.text_input("Thị trường / Quốc gia mục tiêu:", "Sweden").strip()
 
 num_per_query = st.slider("Số lượng kết quả lấy cho mỗi câu lệnh", 5, 20, 10)
+
+# Làm sạch tên sản phẩm nếu người dùng lỡ gõ thêm chữ 'importers' hoặc 'importer'
+product = raw_product.strip()
+for word in ["importers", "importer", "distributors", "distributor", "buyers", "buyer"]:
+    if product.lower().endswith(word):
+        product = product[: -len(word)].strip()
 
 queries_to_run = [
     f'"{product}" importers in {country}',
@@ -94,9 +100,13 @@ if btn_start_search:
             st.dataframe(df_clean, use_container_width=True)
             
             csv_data = df_clean.to_csv(index=False, encoding='utf-8-sig')
+            
+            # Tên file xuất Excel sạch sẽ
+            clean_filename = f"Danh_sach_Lead_{product.replace(' ', '_')}_{country.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
+            
             st.download_button(
                 label="📥 Tải danh sách khách hàng về Excel (.CSV)",
                 data=csv_data,
-                file_name=f"Lead_{product}_{country}_{datetime.now().strftime('%Y%m%d')}.csv",
+                file_name=clean_filename,
                 mime="text/csv"
             )
